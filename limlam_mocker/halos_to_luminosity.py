@@ -243,7 +243,7 @@ def Mhalo_to_Lco_Yang(halos, coeffs, scatter=True):
     logM1 = 12.13 - 0.1678*z
     logN = -6.855 + 0.2366*z - 0.05013*z**2
     alpha = 1.642 + 0.1663*z - 0.03238*z**2
-    beta = 1.77*np.exp(-1/2.72) - 0.00827
+    beta = 1.77*np.exp(-z/2.72) - 0.00827
 
     M1 = 10**logM1
     N = 10**logN
