@@ -103,12 +103,13 @@ def Mhalo_to_Lco(halos, params, scatter=True):
             'Padmanabhan': Mhalo_to_Lco_Padmanabhan,
             'fiuducial':   Mhalo_to_Lco_fiuducial,
             'Yang':        Mhalo_to_Lco_Yang,
-            'arbitrary':   Mhalo_to_Lco_arbitrary,
+            'arbitrary':   Mhalo_to_Lco_arbitrary
             }
 
     if params.model in dict.keys():
         return dict[params.model](halos, params.co_model_coeffs, scatter=scatter)
-
+    elif params.model == 'schechter': # this one is abundance-matched and needs extra params
+        return Mhalo_to_Lco_schechter(halos, params, scatter=scatter)
     else:
         sys.exit('\n\n\tYour model, '+params.model+', does not seem to exist\n\t\tPlease check src/halos_to_luminosity.py to add it\n\n')
 
@@ -243,12 +244,12 @@ def Mhalo_to_Lco_Yang(halos, coeffs, scatter=True):
     logM1 = 12.13 - 0.1678*z
     logN = -6.855 + 0.2366*z - 0.05013*z**2
     alpha = 1.642 + 0.1663*z - 0.03238*z**2
-    beta = 1.77*np.exp(-z/2.72) - 0.00827
+    beta = 1.77*np.exp(-z/2.72) - 0.0827
 
     M1 = 10**logM1
     N = 10**logN
 
-    Lco = 2*N * Mh / ((Mh/M1)**(-alpha) + (Mh/M1)**(-beta))
+    Lco = 2*N * Mh / ((Mh/M1)**(-alpha) + (Mh/M1)**(beta))
 
     # fduty function
     logM2 = 11.73 + 0.6634*z
@@ -266,6 +267,15 @@ def Mhalo_to_Lco_Yang(halos, coeffs, scatter=True):
         Lco = add_log_normal_scatter(Lco, sigmaco, 4)
     return Lco
 
+def Mhalo_to_Lco_schechter(halos, params, scatter=True):
+    """ 
+    wrapper to use a schechter function to generate catalog luminosities
+    """
+
+    Lco, params = abundancematch(schechter, params.co_model_coeffs, halos, params)
+    if scatter:
+        Lco      = add_log_normal_scatter(Lco, params.codex, 2)
+    return Lco
 
 def Mhalo_to_Lco_arbitrary(halos, coeffs, scatter=True):
     """
