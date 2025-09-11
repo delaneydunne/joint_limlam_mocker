@@ -273,6 +273,7 @@ def Mhalo_to_Lco_schechter(halos, params, scatter=True):
     """
 
     Lco, params = abundancematch(schechter, params.co_model_coeffs, halos, params)
+    Lco = Lco * 3.826e33 / params.co_model_coeffs[0]
     if scatter:
         Lco      = add_log_normal_scatter(Lco, params.codex, 2)
     return Lco
