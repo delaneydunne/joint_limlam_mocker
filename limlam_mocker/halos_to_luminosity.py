@@ -413,6 +413,10 @@ def Mbol_to_Lsun(Mbol):
     """ convert a bolometric absolute magnitude to a luminosity in Lsun """
     return 10**(0.4*(4.74-Mbol))
 
+def Lsun_to_Mbol(Lsun):
+    """ convert a luminosity in Lsun to a bolometric absolute magnitude """
+    return 4.74 - np.log10(Lsun) / 0.4
+
 def abundancematch_mags(function, coeffs, halos, params):
     """
     calculate Lcat values for each halo by abundance-matching to luminosity function
@@ -632,8 +636,6 @@ def Mhalo_to_Lcatalog_eboss(halos, params):
     # default to Lya luminosity function coefficients from Ouchi et al. 2020
     if not np.any(params.catalog_coeffs):
         params.catalog_coeffs =  [-26.71, -5.93, -3.89, -1.47, -0.46, -0.06, -0.14, 0.32, 2.2, 2.8, -15, -29]
-
-    print(params.catalog_coeffs)
 
     Mg, params = abundancematch_mags(eboss_LEDE, params.catalog_coeffs, halos, params)
     return Mg, params

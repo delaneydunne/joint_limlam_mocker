@@ -6,9 +6,11 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import copy 
-from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 import astropy.constants as const
+from scipy.interpolate import CubicSpline
+from astropy.cosmology import FlatLambdaCDM
+cosmo = FlatLambdaCDM(H0=70*u.km / (u.Mpc*u.s), Om0=0.286, Ob0=0.047)
 
 from .param_argparser import *
 
@@ -131,6 +133,21 @@ def make_output_filenames(params, outputdir=None):
     params.plot_pspec_file = outputdir + '/pspec_' + params.model + '_' + seedname
     return
 
+
+# dealing with magnitudes
+def mag_abs_to_rel(Mg, z, dered=False):
+    """ convert from absolute magnitudes Mg to relative magnitudes, using the Schlegel 1990 K-corrections
+     following Croom et al. 2009"""
+    if dered:
+        kz = np.arange(2.0, 3.5, 0.1)
+        kKB = np.array([-0.53, -0.55, -0.61, -0.64, -0.64, -0.60, -.56, -0.51, -0.46, -0.4,
+                                -0.33, -0.25, -0.16, -0.05, 0.07])
+        kinterp = CubicSpline(kz, kKB)
+        kfac = kinterp(z) - kinterp(2)
+    else:
+        kfac = 0.
+    
+    return Mg + cosmo.distmod(z).value + kfac
 
 # Cosmology Functions
 # Explicitily defined here instead of using something like astropy

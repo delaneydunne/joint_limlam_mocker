@@ -277,11 +277,25 @@ class HaloCatalog():
         if not in_place:
             halos = self.copy()
 
-        # cut by luminosity
-        if in_place:
-            self.attrcut_subset('Lcat', params.lcat_cutoff, np.nanmax(self.Lcat)+10, params, in_place=True)
+        # cut by luminosity (normally, just do a straightforward cutoff at Lcut. if dealing with the eboss model do that 
+        #    specifically)
+        if params.catalog_model == 'eboss':
+            # convert from Lsun to relative g-band magnitudes
+            Mg = 4.74 - np.log10(self.Lcat) / 0.4
+            mg = mag_abs_to_rel(Mg, self.redshift)
+
+            brightidx = np.where(mg < params.lcat_cutoff)
+
+            if in_place:
+                self.indexcut(brightidx, in_place=True)
+            else:
+                halos.indexcut(brightidx, in_place=True)
+
         else:
-            halos.attrcut_subset('Lcat', params.lcat_cutoff, np.nanmax(self.Lcat)+10, params, in_place=True)
+            if in_place:
+                self.attrcut_subset('Lcat', params.lcat_cutoff, np.nanmax(self.Lcat)+10, params, in_place=True)
+            else:
+                halos.attrcut_subset('Lcat', params.lcat_cutoff, np.nanmax(self.Lcat)+10, params, in_place=True)
 
         if params.goal_nobj > 0:
             if in_place:
