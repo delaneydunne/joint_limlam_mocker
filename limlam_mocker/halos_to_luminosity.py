@@ -361,6 +361,16 @@ def schechter(L, coeffs):
     
     return (phistar / Lstar) * (L/Lstar)**alpha * np.exp(-L/Lstar)
 
+def doublepowerlaw(L, coeffs):
+    """
+    generic double power law function (ex. reference Umeda + 2025)
+    coeffs are [Lstar, phistar, alpha, beta, min lum, max lum]
+    """
+
+    [Lstar, phistar, alpha, beta, _, _] = coeffs
+
+    return (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
+
 def eboss_LEDE(Mg, coeffs):
     """
     'luminsotiy-evolving, density-evolving' luminosity function for quasars, used in eboss planning
