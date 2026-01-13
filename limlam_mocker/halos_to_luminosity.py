@@ -371,6 +371,23 @@ def doublepowerlaw(L, coeffs):
 
     return (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
 
+def schechter_dpl(L, coeffs):
+    """
+    helper function to do a schechter+dpl luminosity function (LAE schechter component
+    and bright AGN DPL component). this is the dn/dL version that has L* divided out 
+    (used for abundance matching)
+    coeffs are [Lstar_sch, phistar_sch, alpha_sch, 
+      Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, 
+      min lum, max lum]
+    """
+
+    [Lstar_sch, phistar_sch, alpha_sch, Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax] = coeffs
+
+    sch = schechter(L, [Lstar_sch, phistar_sch, alpha_sch, Lmin, Lmax])
+    dpl = doublepowerlaw(L, [Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax])
+
+    return sch + dpl
+
 def eboss_LEDE(Mg, coeffs):
     """
     'luminsotiy-evolving, density-evolving' luminosity function for quasars, used in eboss planning
@@ -555,6 +572,7 @@ def Mhalo_to_Lcatalog(halos, params):
     dict = {'lya_chung':            Mhalo_to_LLya_Chung,
             'schechter':           Mhalo_to_Lcatalog_schechter,
             'schechter_amp':        Mhalo_to_Lcatalog_schechter_amp,
+            'schechter_dpl':    Mhalo_to_Lcatalog_schechter_dpl,
             'eboss':            Mhalo_to_Lcatalog_eboss,
             'default':          Mhalo_to_Lcatalog_test1,
             'test2':          Mhalo_to_Lcatalog_test2
@@ -632,6 +650,19 @@ def Mhalo_to_Lcatalog_schechter_amp(halos, params):
 
     Llya, params = abundancematch(schechter, params.catalog_coeffs[1:], halos, params)
     Llya *= params.catalog_coeffs[0]
+    return Llya, params
+
+def Mhalo_to_Lcatalog_schechter_dpl(halos, params):
+    """
+    wrapper to use a schechter+dpl function to generate catalog luminosities
+    the dpl is for the AGN component contributing to the lya luminosity function
+    """
+
+    # default to Lya luminosity function coefficients from Zhang et al. 2021
+    if not params.catalog_coeffs:
+        params.catalog_coeffs = [10**42.86, 10**-3.39, -1.69, 10**44.68, 10**-5.96, -1.23, -3.06, 39, 45]
+
+    Llya, params = abundancematch(schechter_dpl, params.catalog_coeffs, halos, params)
     return Llya, params
 
 def Mhalo_to_Lcatalog_eboss(halos, params):
