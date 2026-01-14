@@ -384,7 +384,7 @@ def schechter_dpl(L, coeffs):
     [Lstar_sch, phistar_sch, alpha_sch, Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax] = coeffs
 
     sch = schechter(L, [Lstar_sch, phistar_sch, alpha_sch, Lmin, Lmax])
-    dpl = doublepowerlaw(L, [Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax])
+    dpl = doublepowerlaw(L, [Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax])*Lstar_dpl/Lstar_sch
 
     return sch + dpl
 
