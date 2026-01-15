@@ -379,7 +379,7 @@ def doublepowerlaw(L, coeffs):
 
     [Lstar, phistar, alpha, beta, _, _] = coeffs
 
-    return (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
+    return (phistar/Lstar) / (np.power((L/Lstar), -alpha) + np.power((L/Lstar), -beta))
 
 def logdoublepowerlaw(L, coeffs):
     """
@@ -389,7 +389,7 @@ def logdoublepowerlaw(L, coeffs):
 
     [Lstar, phistar, alpha, beta, _, _] = coeffs 
     
-    return (phistar/Lstar) / (np.power((L/Lstar), -alpha) + np.power((L/Lstar), -beta))
+    return np.log(10) * (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
 
 def schechter_dpl(L, coeffs):
     """
