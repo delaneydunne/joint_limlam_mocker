@@ -361,6 +361,16 @@ def schechter(L, coeffs):
     
     return (phistar / Lstar) * (L/Lstar)**alpha * np.exp(-L/Lstar)
 
+def logschechter(L, coeffs):
+    """
+    generic schechter function (Schechter 1976), but in dlogL form intead of dL form
+    coeffs are [Lstar, phistar, alpha, minlum, maxlum]
+    """
+
+    [Lstar, phistar, alpha, _, _] = coeffs 
+    
+    return np.log(10) * (phistar / Lstar) * (L/Lstar)**(alpha+1) * np.exp(-L/Lstar)
+
 def doublepowerlaw(L, coeffs):
     """
     generic double power law function (ex. reference Umeda + 2025)
@@ -370,6 +380,16 @@ def doublepowerlaw(L, coeffs):
     [Lstar, phistar, alpha, beta, _, _] = coeffs
 
     return (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
+
+def logdoublepowerlar(L, coeffs):
+    """
+    generic double power law function but in dlogL form instead of dL form
+    coeffs are [Lstar, phistar, alpha, beta, minlum, maxlum]
+    """
+
+    [Lstar, phistar, alpha, beta, _, _] = coeffs 
+    
+    return (phistar/Lstar) / (np.power((L/Lstar), -alpha) + np.power(L/Lstar), -beta)
 
 def schechter_dpl(L, coeffs):
     """
