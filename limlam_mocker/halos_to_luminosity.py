@@ -381,7 +381,7 @@ def doublepowerlaw(L, coeffs):
 
     return (phistar/Lstar) / (np.power((L/Lstar), -alpha-1) + np.power((L/Lstar), -beta-1))
 
-def logdoublepowerlar(L, coeffs):
+def logdoublepowerlaw(L, coeffs):
     """
     generic double power law function but in dlogL form instead of dL form
     coeffs are [Lstar, phistar, alpha, beta, minlum, maxlum]
