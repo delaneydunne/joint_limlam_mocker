@@ -408,6 +408,23 @@ def schechter_dpl(L, coeffs):
 
     return sch + dpl
 
+def logschechter_dpl(L, coeffs):
+    """
+    helper function to do a schechter+dpl luminosity function (LAE schechter component
+    and bright AGN DPL component). this is the dlogL version that has L* divided out 
+    (DON'T use for current abundance matching setup)
+    coeffs are [Lstar_sch, phistar_sch, alpha_sch, 
+      Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, 
+      min lum, max lum]
+    """
+
+    [Lstar_sch, phistar_sch, alpha_sch, Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax] = coeffs
+
+    sch = logschechter(L, [Lstar_sch, phistar_sch, alpha_sch, Lmin, Lmax])
+    dpl = logdoublepowerlaw(L, [Lstar_dpl, phistar_dpl, alpha_dpl, beta_dpl, Lmin, Lmax])*Lstar_dpl/Lstar_sch
+
+    return sch + dpl
+
 def eboss_LEDE(Mg, coeffs):
     """
     'luminsotiy-evolving, density-evolving' luminosity function for quasars, used in eboss planning
