@@ -264,7 +264,7 @@ class HaloCatalog():
                 params.lcat_cutoff: the lower limit on catalog luminosity to include (in Lsun)
                 params.goal_nobj: number of catalog objects to include once the cut is made
                 params.vcat_seed: rng seed (using the velocity one)
-                params.obs_weight: whether observation culling should be logarithmic or linear
+                params.obs_weight: whether observation culling should be logarithmic or linear (or unweighted)
         in_place: bool (optional, default=True)
             if True, performs cuts on this HaloCatalog object. if False, returns a copy of the object
             with cuts applied
@@ -305,6 +305,8 @@ class HaloCatalog():
                     weights = self.Lcat / np.sum(self.Lcat)
                 elif params.obs_weight == 'log':
                     weights = np.log10(self.Lcat) / np.sum(np.log10(self.Lcat))
+                elif params.obs_weight == 'none':
+                    weights = np.ones(self.Lcat) / self.nhalo
                 keepidx = rng.choice(self.nhalo, params.goal_nobj, replace=False, p=weights) #*** use probability here to weight selections
                 # cut to these objects
                 self.indexcut(keepidx, in_place=True)
@@ -315,6 +317,8 @@ class HaloCatalog():
                     weights = halos.Lcat / np.sum(halos.Lcat)
                 elif params.obs_weight == 'log':
                     weights = np.log10(halos.Lcat) / np.sum(np.log10(halos.Lcat))
+                elif params.obs_weight == 'none':
+                    weights = np.ones(self.Lcat) / self.nhalo
                 keepidx = rng.choice(halos.nhalo, params.goal_nobj, replace=False, p=weights) #*** use probability here to weight selections
                 # cut to these objects
                 halos.indexcut(keepidx, in_place=True)
