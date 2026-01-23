@@ -318,7 +318,7 @@ class HaloCatalog():
                 elif params.obs_weight == 'log':
                     weights = np.log10(halos.Lcat) / np.sum(np.log10(halos.Lcat))
                 elif params.obs_weight == 'none':
-                    weights = np.ones(self.nhalo) / self.nhalo
+                    weights = np.ones(halos.nhalo) / halos.nhalo
                 keepidx = rng.choice(halos.nhalo, params.goal_nobj, replace=False, p=weights) #*** use probability here to weight selections
                 # cut to these objects
                 halos.indexcut(keepidx, in_place=True)
