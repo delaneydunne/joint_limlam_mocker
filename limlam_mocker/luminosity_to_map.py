@@ -182,15 +182,20 @@ class SimMap():
 
         # Transform from Luminosity to Temperature (uK)
         # ... or to flux density (Jy/sr)
-        if (params.units=='intensity'):
-            if params.verbose: print('\n\tcalculating halo intensities')
-            halos.Tco = I_line(halos, self)
-        elif (params.units=='temperature'):
-            if params.verbose: print('\n\tcalculating halo temperatures')
-            halos.Tco = T_line(halos, self)
-        else:
-            if params.verbose: print('\n\tdefaulting to halo temperatures')
-            halos.Tco = T_line(halos, self)
+        # ... or leave as mass
+        match params.units:
+            case 'intensity':
+                if params.verbose: print('\n\tcalculating halo intensities')
+                halos.Tco = I_line(halos, self)
+            case 'temperature':
+                if params.verbose: print('\n\tcalculating halo temperatures')
+                halos.Tco = T_line(halos, self)
+            case 'mass':
+                if params.verbose: print('\n\tpreserving halo masses')
+                halos.Tco = halos.M
+            case _:
+                if params.verbose: print('\n\tdefaulting to halo temperatures')
+                halos.Tco = T_line(halos, self)
 
         # bin halos by velocity into bincount bins (will be smoothed in those chunks)
         if 1==params.bincount or not params.freqbroaden:
@@ -344,9 +349,13 @@ class SimMap():
             if (params.units=='intensity'):
                 if params.verbose: print('\n\tcalculating halo intensities')
                 halos.Tcat = I_line(halos, self, attribute='Lcat')
-            else:
+            elif (params.units=='temperature'):
                 if params.verbose: print('\n\tcalculating halo temperatures')
                 halos.Tcat = T_line(halos, self, attribute='Lcat')
+            else:
+                if params.verbose: print('\n\tpreserving halo masses')
+                halos.Tcat = halos.M 
+                
                 
             # flip frequency bins because np.histogram needs increasing bins
             bins3D = [self.pix_binedges_x, self.pix_binedges_y, self.nu_binedges[::-1]]
