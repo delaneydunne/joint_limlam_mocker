@@ -532,6 +532,72 @@ def abundancematch_mags(function, coeffs, halos, params):
 
     return halos.Lcat, params
 
+def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, deconv=True):
+    """
+    calculate Lcat values for each halo by abundance-matching to luminosity function
+    this function uses the yymao/AbundanceMatching code (https://github.com/yymao/abundancematching/tree/master)
+    to deal with scatter in the luminosity function correctly, so that must be installed.
+    thus far must use a schechter function
+
+    ** give an option to either return the deconvolved version, the fully scatterless verison, or the version with scatter
+    
+    inputs:
+    -------
+        coeffs: array-like of floats
+            the coefficients to be passed to the luminosity function for the particular case
+            coeffs[-2] and coeffs[-1] are the min and max luminosity to integrate over, respectively
+        halos: HaloCatalog object
+            information about the DM halos (mostly need mass: halos.M)
+        params: SimParameters object
+            holds the parameters for the simulation run
+        repeat: int
+            number of iterations of the deconvolution
+        sm_step: float
+            grid at which deconvolution happens
+        deconv: bool
+            if true, return the deconvolved version of the output abundance matched catalogue
+            (allows for scatter to then be added in)
+
+    outputs:
+    --------
+    Adds to the HaloCatalog object:
+        Lcat: (array-like of floats) the catalogue luminosities
+    
+    """
+    # imports
+    from AbundanceMatching import AbundanceFunction, calc_number_densities, add_scatter, rematch
+
+    # change the coefficients to work with a logscaled x-axis
+    logcoeffs = copy.deepcopy(coeffs)
+    logcoeffs[2] += 1
+    logcoeffs[1] *= np.log(10)
+
+    # set up a look-up table of log(Lya) values and luminosity function values
+    llogLprime = np.log10(np.logspace(logcoeffs[-2], logcoeffs[-1], 51))
+    lphiLarr = schechter(10**llogLprime, logcoeffs) * logcoeffs[0]
+    ltestlf = np.stack((llogLprime, lphiLarr), 1)
+
+    # set up abundance matching object
+    af = AbundanceFunction(ltestlf[:,0], ltestlf[:,1], (37,45), faint_end_first=True, faint_end_fit_points=5, bright_end_fit_points=5)
+
+    # deconvolution (store this in halos?)
+    remainder = af.deconvolute(params.catdex, repeat, sm_step)
+    halos.af_remainder = remainder 
+
+    boxsize = (np.ptp(halos.ra)*u.deg / cosmo.arcsec_per_kpc_comoving(2.8)).to(u.Mpc).value
+    nd_halos = calc_number_densities(halos.M, boxsize)
+
+    # abundance match
+    if deconv:
+        catalog = af.match(nd_halos, params.catdex, False)
+    else:
+        catalog = af.match(nd_halos)
+
+    # convert to solar luminosities and store in the halo catalog
+    halos.Lcat = 10**catalog / 3.826e33 
+
+    return halos.Lcat, params
+
 
 def abundancematch(function, coeffs, halos, params):
     """
@@ -610,6 +676,7 @@ def Mhalo_to_Lcatalog(halos, params):
             'schechter':           Mhalo_to_Lcatalog_schechter,
             'schechter_amp':        Mhalo_to_Lcatalog_schechter_amp,
             'schechter_dpl':    Mhalo_to_Lcatalog_schechter_dpl,
+            'schechter_deconv':     Mhalo_to_Lcatalog_schechter_deconv,
             'eboss':            Mhalo_to_Lcatalog_eboss,
             'default':          Mhalo_to_Lcatalog_test1,
             'test2':          Mhalo_to_Lcatalog_test2
@@ -700,6 +767,20 @@ def Mhalo_to_Lcatalog_schechter_dpl(halos, params):
         params.catalog_coeffs = [10**42.86, 10**-3.39, -1.69, 10**44.68, 10**-5.96, -1.23, -3.06, 39, 45]
 
     Llya, params = abundancematch(schechter_dpl, params.catalog_coeffs, halos, params)
+    return Llya, params
+
+def Mhalo_to_Lcatalog_schechter_deconv(halos, params):
+    """
+    wrapper to use a schechter function to generate catalog luminosities
+    this one uses the yymao/AbundanceMatching code to treat scatter while preserving the Llya histogram
+    (based on Behroozi et al. 2010, https://arxiv.org/abs/1001.0015). That package needs to be installed
+    """
+
+    # default to Lya luminosity function coefficients from Ouchi et al. 2020
+    if not params.catalog_coeffs:
+        params.catalog_coeffs = [0.849e43, 3.9e-4, -1.8, 39, 45]
+
+    Llya, params = abundancematch_deconv(params.catalog_coeffs, halos, params, deconv=True)
     return Llya, params
 
 def Mhalo_to_Lcatalog_eboss(halos, params):
