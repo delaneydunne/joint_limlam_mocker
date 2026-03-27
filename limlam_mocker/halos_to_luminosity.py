@@ -532,7 +532,8 @@ def abundancematch_mags(function, coeffs, halos, params):
 
     return halos.Lcat, params
 
-def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, deconv=True, delogcoeffs=False):
+def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, deconv=True, 
+                          delogcoeffs=True, scatter=False):
     """
     calculate Lcat values for each halo by abundance-matching to luminosity function
     this function uses the yymao/AbundanceMatching code (https://github.com/yymao/abundancematching/tree/master)
@@ -557,6 +558,9 @@ def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, decon
         deconv: bool
             if true, return the deconvolved version of the output abundance matched catalogue
             (allows for scatter to then be added in)
+        scatter: bool
+            if true, scatters right here and now **this is the only way to return a reliable scatter
+            right now, I need to figure out the rematch thing
 
     outputs:
     --------
@@ -594,13 +598,15 @@ def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, decon
     nd_halos = calc_number_densities(halos.M, boxsize)
 
     # abundance match
+    if scatter:
+        deconv = True # ****
     if deconv:
-        catalog = af.match(nd_halos, params.catdex, False)
+        catalog = af.match(nd_halos, params.catdex, scatter)
     else:
         catalog = af.match(nd_halos)
 
     # convert to solar luminosities and store in the halo catalog
-    halos.Lcat = 10**catalog / 3.826e33 
+    halos.Lcat = 10**catalog / 3.826e33 * np.log(10)
 
     return halos.Lcat, params
 
