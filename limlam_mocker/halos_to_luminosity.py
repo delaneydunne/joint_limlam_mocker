@@ -532,7 +532,7 @@ def abundancematch_mags(function, coeffs, halos, params):
 
     return halos.Lcat, params
 
-def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, deconv=True):
+def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, deconv=True, delogcoeffs=False):
     """
     calculate Lcat values for each halo by abundance-matching to luminosity function
     this function uses the yymao/AbundanceMatching code (https://github.com/yymao/abundancematching/tree/master)
@@ -565,12 +565,13 @@ def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, decon
     
     """
     # imports
-    from AbundanceMatching import AbundanceFunction, calc_number_densities, add_scatter, rematch
+    from AbundanceMatching import AbundanceFunction, calc_number_densities
 
     # change the coefficients to work with a logscaled x-axis
     logcoeffs = copy.deepcopy(coeffs)
-    logcoeffs[2] += 1
-    logcoeffs[1] *= np.log(10)
+    if delogcoeffs:
+        logcoeffs[2] += 1
+        logcoeffs[1] *= np.log(10)
 
     # set up a look-up table of log(Lya) values and luminosity function values
     llogLprime = np.log10(np.logspace(logcoeffs[-2], logcoeffs[-1], 51))
@@ -582,9 +583,14 @@ def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, decon
 
     # deconvolution (store this in halos?)
     remainder = af.deconvolute(params.catdex, repeat, sm_step)
-    halos.af_remainder = remainder 
+    halos._af_remainder = remainder 
 
-    boxsize = (np.ptp(halos.ra)*u.deg / cosmo.arcsec_per_kpc_comoving(2.8)).to(u.Mpc).value
+    # VOLUME of the simulation in cMpc**3
+    cosmo = halos.cosmo
+    volumeslice = cosmo.comoving_volume(params.z_f) - cosmo.comoving_volume(params.z_i)
+    vol = (volumeslice / (4*np.pi*u.sr) * (params.fov_x * params.fov_y * u.deg**2)).to(u.Mpc**3)
+
+    boxsize = np.power(vol, 1/3).value
     nd_halos = calc_number_densities(halos.M, boxsize)
 
     # abundance match
