@@ -101,6 +101,7 @@ def Mhalo_to_Lco(halos, params, scatter=True):
     dict = {'Li':          Mhalo_to_Lco_Li,
             'Li_sc':       Mhalo_to_Lco_Li_sigmasc,
             'Padmanabhan': Mhalo_to_Lco_Padmanabhan,
+            'Padmanabhan_fduty': Mhalo_to_Lco_Padmanabhan_fduty,
             'fiuducial':   Mhalo_to_Lco_fiuducial,
             'Yang':        Mhalo_to_Lco_Yang,
             'arbitrary':   Mhalo_to_Lco_arbitrary
@@ -199,6 +200,38 @@ def Mhalo_to_Lco_Padmanabhan(halos, coeffs, scatter=True):
 
     Lprime = 2 * n * hm / ( (hm/m1)**(-b) + (hm/m1)**y )
     Lco    = 4.9e-5 * Lprime * fduty
+
+    return Lco
+
+def Mhalo_to_Lco_Padmanabhan_fduty(halos, coeffs, scatter=True):
+    """
+    halo mass to L_CO
+    following the Padmanabhan 2017 model (arXiv 1706.01471)
+    critical difference from above is this deals with the duty factor properly, by randomly assigning a fraction
+    (1-fduty) of halos 0 luminosity
+    """
+    if coeffs is None:
+        m10,m11,n10,n11,b10,b11,y10,y11,fduty = (
+            4.17e12,-1.17,0.0033,0.04,0.95,0.48,0.66,-0.33,1)
+    else:
+        m10,m11,n10,n11,b10,b11,y10,y11,fduty = coeffs
+
+    z  = halos.redshift
+    hm = halos.M
+
+    m1 = 10**(np.log10(m10)+m11*z/(z+1))
+    n  = n10 + n11 * z/(z+1)
+    b  = b10 + b11 * z/(z+1)
+    y  = y10 + y11 * z/(z+1)
+
+    Lprime = 2 * n * hm / ( (hm/m1)**(-b) + (hm/m1)**y )
+    Lco    = 4.9e-5 * Lprime
+
+    # randomly select 1 - fduty halos
+    nhalos = len(Lco)
+    rng = np.random.default_rng()
+    zeroidxs = rng.choice(np.arange(nhalos), size=int(nhalos*(1-fduty)), replace=False)
+    Lco[zeroidxs] = 0. # not zero just so they can log easier
 
     return Lco
 
@@ -540,7 +573,7 @@ def abundancematch_deconv(coeffs, halos, params, repeat=10, sm_step=0.001, decon
     to deal with scatter in the luminosity function correctly, so that must be installed.
     thus far must use a schechter function
 
-    ** give an option to either return the deconvolved version, the fully scatterless verison, or the version with scatter
+    ** RIGHT NOW THIS IS THE ONLY ONE THAT'S WORKING KIND OF OK ***
     
     inputs:
     -------

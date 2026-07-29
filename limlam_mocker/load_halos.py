@@ -436,14 +436,14 @@ class HaloCatalog():
             return subset
 
 
-    def masscut_subset(self, min_mass, max_mass, in_place=False):
+    def masscut_subset(self, min_mass, max_mass, params, in_place=False):
         """
         same as attrcut_subset, but a cut on mass specifically (for convenience)
         """
         if in_place:
-            self.attrcut_subset('M', min_mass, max_mass, in_place=True)
+            self.attrcut_subset('M', min_mass, max_mass, params, in_place=True)
         else:
-            return self.attrcut_subset('M', min_mass, max_mass)
+            return self.attrcut_subset('M', min_mass, max_mass, params)
 
     def vmaxcut_subset(self, min_vmax, max_vmax, in_place=False):
         """
