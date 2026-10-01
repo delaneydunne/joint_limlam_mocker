@@ -79,6 +79,10 @@ class SimMap():
         self.dnu         = np.abs(np.mean(np.diff(self.nu_binedges)))
         self.nu_bincents = self.nu_binedges[:-1] - self.dnu/2
 
+        # redshift arrays along the frequency dimension (for comparison with other LIM maps)
+        self.z_binedges = self.nu_rest / self.nu_binedges - 1
+        self.z_bincents = self.nu_rest / self.nu_bincents - 1
+
         # get full map volume
         x,y,z = self.pix_binedges_x, self.pix_binedges_y, self.nu_binedges
         zco = params.cosmo.comoving_distance(self.nu_rest/z-1)
@@ -172,6 +176,17 @@ class SimMap():
         """
 
         """ SET UP """
+        ### which halo attribute to map (default to CO luminosity)
+        try: 
+            mapattr = params.map_input
+            if params.verbose: print(f'\n\tusing {mapattr} as map input')
+        except AttributeError:
+            if params.verbose: print('\n\tinput array not specified, using Lco')
+            mapattr = 'Lco'
+        if mapattr == None:
+            if params.verbose: print('\n\tinput array not specified, using Lco')
+            mapattr = 'Lco'
+
         ### Calculate line freq from redshift
         halos.nu  = self.nu_rest/(halos.redshift+1)
         try:
@@ -186,16 +201,22 @@ class SimMap():
         match params.units:
             case 'intensity':
                 if params.verbose: print('\n\tcalculating halo intensities')
-                halos.Tco = I_line(halos, self)
+                halos.Tco = I_line(halos, self, attribute=mapattr)
             case 'temperature':
                 if params.verbose: print('\n\tcalculating halo temperatures')
-                halos.Tco = T_line(halos, self)
+                halos.Tco = T_line(halos, self, attribute=mapattr)
+            case 'T_HI':
+                if params.verbose: print('\n\tcalculating brightness temperature from HI mass')
+                halos.Tco = MHI_to_Tb(halos, self, attribute=mapattr)
+            case 'M_HI':
+                if params.verbose: print('\n\tpreserving halo HI masses')
+                halos.Tco = getattr(halos, mapattr)
             case 'mass':
                 if params.verbose: print('\n\tpreserving halo masses')
                 halos.Tco = halos.M
             case _:
                 if params.verbose: print('\n\tdefaulting to halo temperatures')
-                halos.Tco = T_line(halos, self)
+                halos.Tco = T_line(halos, self, attribute=mapattr)
 
         # bin halos by velocity into bincount bins (will be smoothed in those chunks)
         if 1==params.bincount or not params.freqbroaden:
@@ -340,35 +361,41 @@ class SimMap():
             self.map = mapssm[:,:,::-1]
 
             
-        """ MAKE A MAP OF THE LUMINOSITY VALUES FOR THE CATALOG TRACER 
-            (for cross-correlating fluctuation cubes) """
-        # Transform from Luminosity to Temperature (uK)
-        # ... or to flux density (Jy/sr)
-        if hasattr(halos, 'Lcat'):
-            # do unit conversions if necessary
-            if (params.units=='intensity'):
-                if params.verbose: print('\n\tcalculating halo intensities')
-                halos.Tcat = I_line(halos, self, attribute='Lcat')
-            elif (params.units=='temperature'):
-                if params.verbose: print('\n\tcalculating halo temperatures')
-                halos.Tcat = T_line(halos, self, attribute='Lcat')
-            else:
-                if params.verbose: print('\n\tpreserving halo masses')
-                halos.Tcat = halos.M 
+        # """ MAKE A MAP OF THE LUMINOSITY VALUES FOR THE CATALOG TRACER 
+        #     (for cross-correlating fluctuation cubes) """
+        # # Transform from Luminosity to Temperature (uK)
+        # # ... or to flux density (Jy/sr)
+        # if hasattr(halos, 'Lcat'):
+        #     # do unit conversions if necessary
+        #     if (params.catmapunits=='intensity'):
+        #         if params.verbose: print('\n\tcalculating halo intensities')
+        #         halos.Tcat = I_line(halos, self, attribute='Lcat')
+        #     elif (params.catmapunits=='temperature'):
+        #         if params.verbose: print('\n\tcalculating halo temperatures')
+        #         halos.Tcat = T_line(halos, self, attribute='Lcat')
+        #     elif (params.catmapunits=='M_HI'):
+        #         if params.verbose: print('\n\tpassing HI masses through')
+        #         halos.Tcat = halos.Lcat
+        #     elif (params.catmapunits=='T_HI'):
+        #         if params.verbose: print('\n\tcalculating halo Tb from HI masses directly')
+        #         halos.Tcat = MHI_to_Tb(halos, self, attribute='Lcat')
+        #     else:
+        #         if params.verbose: print('\n\tpreserving halo masses')
+        #         halos.Tcat = halos.M 
                 
                 
-            # flip frequency bins because np.histogram needs increasing bins
-            bins3D = [self.pix_binedges_x, self.pix_binedges_y, self.nu_binedges[::-1]]
+        #     # flip frequency bins because np.histogram needs increasing bins
+        #     bins3D = [self.pix_binedges_x, self.pix_binedges_y, self.nu_binedges[::-1]]
 
-            # bin in RA, DEC, NU_obs
-            if params.verbose: print('\n\tBinning catalog halos into map')
-            catmaps, edges = np.histogramdd( np.c_[halos.ra, halos.dec, halos.nucat],
-                                             bins    = bins3D,
-                                             weights = halos.Tcat )
-            if (params.units=='intensity'):
-                catmaps/= self.Ompix 
-            # flip back frequency bins
-            self.catmap = catmaps[:,:,::-1]
+        #     # bin in RA, DEC, NU_obs
+        #     if params.verbose: print('\n\tBinning catalog halos into map')
+        #     catmaps, edges = np.histogramdd( np.c_[halos.ra, halos.dec, halos.nucat],
+        #                                      bins    = bins3D,
+        #                                      weights = halos.Tcat )
+        #     if (params.units=='intensity'):
+        #         catmaps/= self.Ompix 
+        #     # flip back frequency bins
+        #     self.catmap = catmaps[:,:,::-1]
 
         """ ADD OTHER MOCK THINGS TO MAP """
         if params.add_comap_noise:
@@ -558,4 +585,17 @@ def T_line(halos, map, attribute='Lco'):
 
     return Tco
 
+### HI-specific brightness temperature conversion
+def MHI_to_Tb(halos, map, attribute='Lcat'):
+    """
+    calculate the brightness temperature associated with each halo directly from its HI mass
+    equation is from bull et al. 2015 (https://doi.org/10.1088/0004-637X/803/1/21)
+    """
+    prefac = 3.23e-4
+    dO = (map.pix_size_x * map.pix_size_y * u.deg**2).to(u.sr).value
+    dnu = map.dnu*1e9 # stored in GHz, want Hz
+    mass = getattr(halos, attribute)
 
+    Tb = (prefac / dO / dnu / halos.chi**2 * mass)
+
+    return Tb

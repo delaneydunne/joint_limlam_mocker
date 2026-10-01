@@ -723,6 +723,7 @@ def Mhalo_to_Lcatalog(halos, params):
             'schechter_dpl':    Mhalo_to_Lcatalog_schechter_dpl,
             'schechter_deconv':     Mhalo_to_Lcatalog_schechter_deconv,
             'eboss':            Mhalo_to_Lcatalog_eboss,
+            "MHI_VK18":         Mhalo_to_MHI_VN18,
             'default':          Mhalo_to_Lcatalog_test1,
             'test2':          Mhalo_to_Lcatalog_test2
             }
@@ -843,6 +844,37 @@ def Mhalo_to_Lcatalog_eboss(halos, params):
 
     Mg, params = abundancematch_mags(eboss_LEDE, params.catalog_coeffs, halos, params)
     return Mg, params
+
+def Mhalo_to_MHI_VN18(halos, params):
+    """
+    model to get HI masses from DM masses
+    based on Villaescusa-Navarro et al. 2018 (arXiv:1804.09180). using the full fitting form that's a
+    modified schechter. this doesn't depend individually on halo redshifts but the coefficients are
+    redshift-dependent. defaulting to the z=3 values
+    also using a constant lognormal scatter rather than the uncertainty on the fitting parameters
+    """
+    try:
+        coeffs = params.catalog_coeffs
+    except AttributeError:
+        coeffs = None 
+
+    if coeffs is None:
+        # z=3 FoF fit parameters
+        alpha, M0, Mmin, sigma = (
+            0.76, 2.9e9, 6.7e10, 0.331)
+    else:
+        alpha, M0, Mmin, sigma = coeffs
+    
+    # factor of h is applied to each of the fit parameters, so put the measured
+    # halos into the same units for these calculations
+    x = halos.M*params.cosmo.h / Mmin
+
+    MHI = M0 * (x)**alpha * np.exp(-1/x**0.35)
+    MHI /= params.cosmo.h
+
+    params.catdex = sigma
+
+    return MHI, params
 
 
 def Mhalo_to_Lcatalog_test1(halos, params):

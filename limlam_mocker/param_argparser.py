@@ -141,6 +141,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--map_input",
+    type=str,
+    default='Lco',
+    help="(SimGenerator) The halo catalogue attribute to be used as input for the mapmaker. Defaults to 'Lco' (CO Luminoisty)."
+)
+
+parser.add_argument(
     "--units",
     type=str,
     default='temperature',
