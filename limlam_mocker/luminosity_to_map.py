@@ -543,7 +543,6 @@ class SimMap():
                  map_pixel_dec   = self.pix_bincents_y,
                  map_frequencies = self.nu_bincents,
                  map_cube        = self.map,
-                 cat_cube        = self.catmap,
                  cat_hits        = hits,
                  sigma           = sigma)
 
