@@ -122,7 +122,6 @@ class SimMap():
             self.pix_bincents_y = f['map_pixel_dec']
             self.nu_bincents = f['map_frequencies']
             self.map = f['map_cube']
-            self.catmap = f['cat_cube']
             self.hit = f['cat_hits']
 
         # other map metadata from params object
