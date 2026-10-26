@@ -68,9 +68,12 @@ def Mhalo_to_Ls(halos, params):
             halos.scatterless_Lco = copy.deepcopy(halos.Lco)
             halos.scatterless_Lcat = copy.deepcopy(halos.Lcat)
 
-        # calculate the joint scatter
-        halos = add_co_tracer_dependant_scatter(halos, params.rho, params.codex, params.catdex, params.lum_uncert_seed)
-
+        if not params.variable_scatter:
+            # calculate the joint scatter
+            halos = add_co_tracer_dependant_scatter(halos, params.rho, params.codex, params.catdex, params.lum_uncert_seed)
+        else:
+            halos = add_variable_co_tracer_dependant_scatter(halos, params.rho, params.codex, params.catdex,
+                                                             params.lum_uncert_seed, params.scatter_nbins)
     else: 
         # for testing--save the unscattered luminosity values
         if params.save_scatterless_lums:
@@ -872,9 +875,30 @@ def Mhalo_to_MHI_VN18(halos, params):
     MHI = M0 * (x)**alpha * np.exp(-1/x**0.35)
     MHI /= params.cosmo.h
 
-    params.catdex = sigma
+    if params.variable_scatter:
+        dMhi = Mhalo_to_dMHI(halos, params)
+        logdMhi = np.log10(MHI*(1+dMhi)) - np.log10(MHI)
+        params.catdex = logdMhi
+    else:
+        params.catdex = sigma
 
     return MHI, params
+
+def Mhalo_to_dMHI(halos, params):
+    """
+    uncertainties in the Villaescusa-Navarro et al. 2018 M_HI(Mh) model
+    this is just from propagating errors through that functional form
+    """
+
+    alpha, M0, Mmin,_ = params.catalog_coeffs
+    dalpha, dM0, dMmin,_ = params.dcatalog_coeffs
+
+    delMA2 = (dM0/M0)**2
+    delMB2 = (alpha*(dMmin/halos.M))**2
+    delMC2 = (np.log(halos.M/Mmin)*dalpha)**2
+    delMD2 = 0.25*(halos.M/Mmin)**(0.35)*(dMmin/Mmin)
+
+    return np.sqrt(delMA2 + delMB2 + delMC2 + delMD2)
 
 
 def Mhalo_to_Lcatalog_test1(halos, params):
@@ -1012,6 +1036,95 @@ def add_co_tracer_dependant_scatter(halos, rho, codex, catdex, seed):
     # np.random.lognormal for a single variable)
     logscaleco = np.exp(coscale + muco)
     logscaletr = np.exp(trscale + mutr)
+
+    # slap scalings onto existing catalog and co luminosities
+    halos.Lco = halos.Lco*logscaleco
+    halos.Lcat = halos.Lcat*logscaletr
+
+    return halos
+
+def add_variable_co_tracer_dependant_scatter(halos, rho, codex, catdex, seed, nbins):
+    """
+    add correlated scatter between the CO luminosities and the other tracer luminosities
+    use a passed correlation coefficient to generate
+    this version allows for a varying amount of lognormal scatter at different halo masses
+    (either codex or catdex should be an array)
+    inputs:
+    -------
+        halos: HaloCatalog object
+            stores all of the information for your catalog of DM halos
+        rho: (float, -1 < rho < 1)
+            correlation coefficient for relating the scatter in the two luminosity values
+        codex: float
+            lognormal scatter in the CO luminosities in dex
+            (either a single value or an array of the same length as halos)
+        catdex: float
+            lognormal scatter in the catalog luminosities in dex
+            (either a single value or an array of the same length as halos)
+        seed: int
+            random generator seed for selecting the scatter values
+        nbins: int
+            number of unique bins in which to calculate y=the covariance
+    outputs:
+        halos: HaloCatalog object
+            multiplies scatter in to halos.Lco and halos.Lcat
+    """
+    if np.all(np.logical_or(codex <= 0, catdex <= 0)):
+        print('passed all negative dex values. not scattering')
+        return halos
+
+    # array out the uncertainties if either of them are a single value
+    if isinstance(codex, float):
+        codex = codex*np.ones_like(halos.Lco)
+    if isinstance(catdex, float):
+        catdex = catdex*np.ones_like(halos.Lcat)
+
+    # set up a numpy random number generator
+    scalerng = np.random.default_rng(seed=seed)
+
+    # sort by halo mass (should already have been done, but jic)
+    sortidx = np.argsort(halos.M)
+    halos.indexcut(sortidx, in_place=True)
+    catdex = catdex[sortidx]
+    codex = codex[sortidx]
+
+    # define bins
+    binedges = np.arange(0, halos.nhalo, halos.nhalo//nbins)
+    if halos.nhalo % nbins == 0:
+        binedges = np.concatenate([binedges, [halos.nhalo]])
+    else:
+        binedges = np.concatenate([binedges[:-1], [halos.nhalo]])
+
+    # iterate thorugh bins, generate a covariance matrix and scalings in each
+    logscaleco = np.array([])
+    logscaletr = np.array([])
+    for i in range(nbins):
+        codexbin = codex[binedges[i]:binedges[i+1]]
+        meancodexbin = np.nanmean(codexbin)
+        
+        catdexbin = catdex[binedges[i]:binedges[i+1]]
+        meancatdexbin = np.nanmean(catdexbin)
+        
+        sigmaco = meancodexbin * 2.30285
+        muco = -0.5*sigmaco**2
+    
+        sigmatr = meancatdexbin*2.30285
+        mutr = -0.5*sigmatr**2
+    
+        mean = [0,0]
+        cov = [[sigmaco**2, sigmaco*sigmatr*rho],
+               [sigmaco*sigmatr*rho, sigmatr**2]]
+
+        # LINEAR normal scalings for co and the halo tracer
+        coscalebin, trscalebin = scalerng.multivariate_normal(mean, cov, size=len(catdexbin)).T
+    
+        # change those into lognormal scalings (output of this would be the same as pulling from
+        # np.random.lognormal for a single variable)
+        logscalecobin = np.exp(coscalebin + muco)
+        logscaletrbin = np.exp(trscalebin + mutr)
+
+        logscaleco = np.concatenate((logscaleco, logscalecobin))
+        logscaletr = np.concatenate((logscaletr, logscaletrbin))
 
     # slap scalings onto existing catalog and co luminosities
     halos.Lco = halos.Lco*logscaleco

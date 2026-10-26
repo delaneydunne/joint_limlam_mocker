@@ -99,6 +99,27 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--variable_scatter",
+    type=bool,
+    default=False,
+    help="(SimGenerator) Whether to generate the artificial scatter in the tracer luminosities differently for different masses. Defaults to False."
+)
+
+parser.add_argument(
+    "--scatter_nbins",
+    type=int,
+    default=100,
+    help="(SimGenerator) If adding variable scatter, number of unique bins in which to calculate its magnitude. Defaults to 100."
+)
+
+parser.add_argument(
+    "--dcatalog_coeffs",
+    type=str2list,
+    default=None,
+    help="(SimGenerator) Uncertainty on each coefficient in the catalog emission modelling function. Used to calculate variable scatter. Defaults to None."
+)
+
+parser.add_argument(
     "--catdex",
     type=float,
     default=0.41,
