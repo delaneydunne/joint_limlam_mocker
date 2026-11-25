@@ -72,6 +72,7 @@ def Mhalo_to_Ls(halos, params):
             # calculate the joint scatter
             halos = add_co_tracer_dependant_scatter(halos, params.rho, params.codex, params.catdex, params.lum_uncert_seed)
         else:
+            print('adding in variable scatter')
             halos = add_variable_co_tracer_dependant_scatter(halos, params.rho, params.codex, params.catdex,
                                                              params.lum_uncert_seed, params.scatter_nbins)
     else: 
